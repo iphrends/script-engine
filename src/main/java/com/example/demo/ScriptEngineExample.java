@@ -1,25 +1,28 @@
 package com.example.demo;
 
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
+import javax.annotation.PostConstruct;
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
+@Component
 public class ScriptEngineExample {
-    static String json;
     static String pathExpression = "$[?(@.integer == 12343 || @.boolean == true)]";
+    private final ScriptEngine javaScriptEngine;
+    String json;
 
-    static {
+    public ScriptEngineExample(ScriptEngine javaScriptEngine) {
+        this.javaScriptEngine = javaScriptEngine;
         try {
             json = FileUtils.readFileToString(ResourceUtils.getFile("classpath:test.json"), StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -27,35 +30,26 @@ public class ScriptEngineExample {
         }
     }
 
-    /*public static void main(String[] args) throws ScriptException, IOException, NoSuchMethodException {
-        ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
-        String condition = "$[?(@.integer == 12343 || @.boolean == true)]";
-
-        File file = ResourceUtils.getFile("classpath:test.json");
-        String json = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-
-//        String javaScript = "var obj = new jsonpath().query(jsonInput, condition);";
-
-        engine.eval(new FileReader(new File("/Users/kashif/Documents/workspace/javascript/script-engine/src/main/resources/jsonpath.js")));
-        Invocable invocable = (Invocable) engine;
-        Object query = invocable.invokeFunction("query", json, condition);
-
-//        Bindings bindings = engine.createBindings();
-//        bindings.put("condition", condition);
-//        bindings.put("jsonInput", json);
-
-//        engine.eval(javaScript, bindings);
-
-//        Object output = engine.get("obj");
-        log.info("{}", query);
-    }*/
-
-    public static void main(String[] args) throws IOException, ScriptException {
-        //-Dnashorn.args=--language=es6
-        ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
-        scriptEngine.eval("const jp = load('/Users/kashif/Documents/workspace/javascript/script-engine/src/main/resources/jsonpath.js');");
-        scriptEngine.eval(String.format("let output = jp.query(JSON.parse('%s'), '%s');", json, pathExpression));
-        Object output = scriptEngine.get("output");
-        log.info("{}", output);
+    /**
+     * have to pass below vm argument
+     * -Dnashorn.args=--language=es6
+     *
+     * @throws ScriptException while processing script
+     */
+    @PostConstruct
+    public void test() throws ScriptException {
+        javaScriptEngine.eval(String.format("var output = jp.query(JSON.parse('%s'), '%s');", json, pathExpression));
+        Object output = javaScriptEngine.get("output");
+        ScriptObjectMirror mirror = (ScriptObjectMirror) output;
+        boolean isArray = mirror.isArray(); //always true - just for safe check
+        if (isArray) {
+            Set<Map.Entry<String, Object>> entries = mirror.entrySet();
+            for (Map.Entry<String, Object> entry : entries) {
+                ScriptObjectMirror object = (ScriptObjectMirror) entry.getValue();
+                if (!object.isArray()) {
+                    object.forEach((key, value) -> log.info("output -> {} : {}", key, value));
+                }
+            }
+        }
     }
 }
