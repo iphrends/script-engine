@@ -17,17 +17,10 @@ import java.util.Set;
 @Slf4j
 @Component
 public class ScriptEngineExample {
-    static String pathExpression = "$[?(@.integer == 12343 || @.boolean == true)]";
     private final ScriptEngine javaScriptEngine;
-    String json;
 
     public ScriptEngineExample(ScriptEngine javaScriptEngine) {
         this.javaScriptEngine = javaScriptEngine;
-        try {
-            json = FileUtils.readFileToString(ResourceUtils.getFile("classpath:test.json"), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -37,7 +30,9 @@ public class ScriptEngineExample {
      * @throws ScriptException while processing script
      */
     @PostConstruct
-    public void test() throws ScriptException {
+    public void test() throws ScriptException, IOException {
+        String pathExpression = "$[?(@.integer == 12343 || @.boolean == true)]";
+        String json = FileUtils.readFileToString(ResourceUtils.getFile("classpath:test.json"), StandardCharsets.UTF_8);
         javaScriptEngine.eval(String.format("var output = jp.query(JSON.parse('%s'), '%s');", json, pathExpression));
         Object output = javaScriptEngine.get("output");
         ScriptObjectMirror mirror = (ScriptObjectMirror) output;
