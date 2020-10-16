@@ -51,6 +51,7 @@ public class ScriptEngineExample {
     }*/
 
     public static void main(String[] args) throws IOException, ScriptException {
+        //-Dnashorn.args=--language=es6
         ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
         scriptEngine.eval("const jp = load('/Users/kashif/Documents/workspace/javascript/script-engine/src/main/resources/jsonpath.js');");
         scriptEngine.eval(String.format("let output = jp.query(JSON.parse('%s'), '%s');", json, pathExpression));
